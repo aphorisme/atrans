@@ -1,9 +1,9 @@
 name:                atrans
 version:             0.1.0.0
 synopsis:            A small collection of monad (transformer) instances.
--- description:
+description:         Defines monad transformers and gives instances based on the mtl transformer library.
 homepage:            https://github.com/aphorisme/atrans
--- license:
+license:             MIT
 license-file:        LICENSE
 author:              Philipp Pfeiffer
 maintainer:          pfiff@hax-f.net
