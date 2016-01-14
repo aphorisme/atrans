@@ -1,0 +1,39 @@
+# Elm specific
+elm-stuff/
+
+# Haskell specific
+dist
+cabal-dev
+*.o
+*.hi
+*.chi
+*.chs.h
+.virtualenv
+.hsenv
+.cabal-sandbox/
+cabal.sandbox.config
+cabal.config
+.stack-work/
+
+# OS-X specific
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon must ends with two
+.
+Icon
+
+
+# Thumbnails
+._*
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
