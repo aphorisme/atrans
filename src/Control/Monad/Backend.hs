@@ -16,27 +16,35 @@ module Control.Monad.Backend where
 
 import Control.Monad.Except
 import Control.Monad.State
-import Control.Concurrent.MVar (MVar, isEmptyMVar, modifyMVar_, takeMVar, putMVar, readMVar)
+import Control.Concurrent.MVar (MVar, isEmptyMVar, modifyMVar_, takeMVar, putMVar, readMVar, newMVar)
 import Control.Arrow (second)
 
 
--- | The 'BackendT' transformer is a 'StateT', where the state is encapsulated into a 'MVar'. The initialized 'MVar' has to be non empty, otherwise every state change is blocking.
+{-| The 'BackendT' transformer is a 'StateT', where the state is encapsulated into a 'MVar'. We have
+
+    BackendT s m a
+
+where `s` is the state and `m` is a monad, usually with a 'MonadIO' constraint. The state is only unwrapped, when 'get', 'set' or 'state' is used. A 'bind' will not unwrap.  -}
 newtype BackendT s m a = BackendT (MVar s -> m (MVar s, a))
 
--- | 'runBackendT' unwraps the 'BackendT' monad.
-runBackendT :: BackendT s m a -> MVar s -> m (MVar s, a)
-runBackendT (BackendT f) = f
+-- | 'runBackendT' unwraps the 'BackendT' monad on a given initial state. This given state is wrapped into an 'MVar'.
+runBackendT :: (Monad m, MonadIO m) => BackendT s m a -> s -> m (MVar s, a)
+runBackendT (BackendT f) s = do { v <- liftIO (newMVar s); f v }
+
+-- | 'rawRunBackendT' unwraps then 'BackendT' monad on a given initial state, where this state is wrapped into an 'MVar'. **The 'MVar' shouldn't be empty, otherwise every state reading/writing is blocking.** Usually, one should use 'runBackendT'.
+rawRunBackendT :: BackendT s m a -> MVar s -> m (MVar s, a)
+rawRunBackendT (BackendT f) = f
 
 instance (Functor m) => Functor (BackendT s m) where
-  fmap f bt = BackendT $ \s -> fmap (second f) (runBackendT bt s)
+  fmap f bt = BackendT $ \s -> fmap (second f) (rawRunBackendT bt s)
 
 instance (Monad m) => Applicative (BackendT s m) where
   pure x = BackendT $ \s -> pure (s, x)
-  pf <*> q = BackendT $ \s -> do { (s', f) <- runBackendT pf s; (s'', x) <- runBackendT q s'; return (s'', f x) }
+  pf <*> q = BackendT $ \s -> do { (s', f) <- rawRunBackendT pf s; (s'', x) <- rawRunBackendT q s'; return (s'', f x) }
 
 instance (Monad m) => Monad (BackendT s m) where
   return x = BackendT $ \s -> return (s, x)
-  p >>= (fq) = BackendT $ \s -> do { (s', x) <- runBackendT p s; runBackendT (fq x) s' }
+  p >>= fq = BackendT $ \s -> do { (s', x) <- rawRunBackendT p s; rawRunBackendT (fq x) s' }
 
 instance (Monad m, MonadIO m) => MonadState s (BackendT s m) where
   get = BackendT $ \s -> do { v <- liftIO (readMVar s); return (s, v) }
